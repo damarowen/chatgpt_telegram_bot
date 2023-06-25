@@ -706,5 +706,6 @@ def run_bot() -> None:
     application.run_polling()
 
 
+# function is only executed when the script is run directly and not imported as a module.
 if __name__ == "__main__":
     run_bot()

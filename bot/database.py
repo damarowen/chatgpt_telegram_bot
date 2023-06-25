@@ -15,6 +15,17 @@ class Database:
         self.user_collection = self.db["user"]
         self.dialog_collection = self.db["dialog"]
 
+        self.ping()
+
+    def ping(self):
+        try:
+            # Perform the ping operation
+            self.db.list_collection_names()
+            print("Database connection successful")
+        except pymongo.errors.ConnectionFailure:
+            print("Unable to connect to the database")
+
+
     def check_if_user_exists(self, user_id: int, raise_exception: bool = False):
         if self.user_collection.count_documents({"_id": user_id}) > 0:
             return True

@@ -112,23 +112,23 @@ async def register_user_if_not_exists(update: Update, context: CallbackContext, 
         db.set_user_attribute(user.id, "n_generated_images", 0)
 
 
-async def is_bot_mentioned(update: Update, context: CallbackContext):
-     try:
-         message = update.message
+# async def is_bot_mentioned(update: Update, context: CallbackContext):
+#      try:
+#          message = update.message
 
-         if message.chat.type == "private":
-             return True
+#          if message.chat.type == "private":
+#              return True
 
-         if message.text is not None and ("@" + context.bot.username) in message.text:
-             return True
+#          if message.text is not None and ("@" + context.bot.username) in message.text:
+#              return True
 
-         if message.reply_to_message is not None:
-             if message.reply_to_message.from_user.id == context.bot.id:
-                 return True
-     except:
-         return True
-     else:
-         return False
+#          if message.reply_to_message is not None:
+#              if message.reply_to_message.from_user.id == context.bot.id:
+#                  return True
+#      except:
+#          return True
+#      else:
+#          return False
 
 
 async def start_handle(update: Update, context: CallbackContext):
@@ -152,15 +152,15 @@ async def help_handle(update: Update, context: CallbackContext):
     await update.message.reply_text(HELP_MESSAGE, parse_mode=ParseMode.HTML)
 
 
-async def help_group_chat_handle(update: Update, context: CallbackContext):
-     await register_user_if_not_exists(update, context, update.message.from_user)
-     user_id = update.message.from_user.id
-     db.set_user_attribute(user_id, "last_interaction", datetime.now())
+# async def help_group_chat_handle(update: Update, context: CallbackContext):
+#      await register_user_if_not_exists(update, context, update.message.from_user)
+#      user_id = update.message.from_user.id
+#      db.set_user_attribute(user_id, "last_interaction", datetime.now())
 
-     text = HELP_GROUP_CHAT_MESSAGE.format(bot_username="@" + context.bot.username)
+#      text = HELP_GROUP_CHAT_MESSAGE.format(bot_username="@" + context.bot.username)
 
-     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-     await update.message.reply_video(config.help_group_chat_video_path)
+#      await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+#      await update.message.reply_video(config.help_group_chat_video_path)
 
 
 async def retry_handle(update: Update, context: CallbackContext):
@@ -183,8 +183,8 @@ async def retry_handle(update: Update, context: CallbackContext):
 
 async def message_handle(update: Update, context: CallbackContext, message=None, use_new_dialog_timeout=True):
     # check if bot was mentioned (for group chats)
-    if not await is_bot_mentioned(update, context):
-        return
+    # if not await is_bot_mentioned(update, context):
+    #     return
 
     # check if message is edited
     if update.edited_message is not None:
@@ -203,7 +203,7 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
     user_id = update.message.from_user.id
     chat_mode = db.get_user_attribute(user_id, "current_chat_mode")
 
-    if chat_mode == "artist":
+    if chat_mode == "DALL-E":
         await generate_image_handle(update, context, message=message)
         return
 
@@ -318,56 +318,59 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
 
 
 async def is_previous_message_not_answered_yet(update: Update, context: CallbackContext):
+    # Register the user if they don't exist
     await register_user_if_not_exists(update, context, update.message.from_user)
 
     user_id = update.message.from_user.id
     if user_semaphores[user_id].locked():
+        # If there is a lock on the user's semaphore, a previous message hasn't been answered yet
         text = "⏳ Please <b>wait</b> for a reply to the previous message\n"
         text += "Or you can /cancel it"
         await update.message.reply_text(text, reply_to_message_id=update.message.id, parse_mode=ParseMode.HTML)
         return True
     else:
+        # The previous message has been answered
         return False
 
 
-async def voice_message_handle(update: Update, context: CallbackContext):
-    # check if bot was mentioned (for group chats)
-    if not await is_bot_mentioned(update, context):
-        return
+# async def voice_message_handle(update: Update, context: CallbackContext):
+#     # check if bot was mentioned (for group chats)
+#     if not await is_bot_mentioned(update, context):
+#         return
 
-    await register_user_if_not_exists(update, context, update.message.from_user)
-    if await is_previous_message_not_answered_yet(update, context): return
+#     await register_user_if_not_exists(update, context, update.message.from_user)
+#     if await is_previous_message_not_answered_yet(update, context): return
 
-    user_id = update.message.from_user.id
-    db.set_user_attribute(user_id, "last_interaction", datetime.now())
+#     user_id = update.message.from_user.id
+#     db.set_user_attribute(user_id, "last_interaction", datetime.now())
 
-    voice = update.message.voice
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_dir = Path(tmp_dir)
-        voice_ogg_path = tmp_dir / "voice.ogg"
+#     voice = update.message.voice
+#     with tempfile.TemporaryDirectory() as tmp_dir:
+#         tmp_dir = Path(tmp_dir)
+#         voice_ogg_path = tmp_dir / "voice.ogg"
 
-        # download
-        voice_file = await context.bot.get_file(voice.file_id)
-        await voice_file.download_to_drive(voice_ogg_path)
+#         # download
+#         voice_file = await context.bot.get_file(voice.file_id)
+#         await voice_file.download_to_drive(voice_ogg_path)
 
-        # convert to mp3
-        voice_mp3_path = tmp_dir / "voice.mp3"
-        pydub.AudioSegment.from_file(voice_ogg_path).export(voice_mp3_path, format="mp3")
+#         # convert to mp3
+#         voice_mp3_path = tmp_dir / "voice.mp3"
+#         pydub.AudioSegment.from_file(voice_ogg_path).export(voice_mp3_path, format="mp3")
 
-        # transcribe
-        with open(voice_mp3_path, "rb") as f:
-            transcribed_text = await openai_utils.transcribe_audio(f)
+#         # transcribe
+#         with open(voice_mp3_path, "rb") as f:
+#             transcribed_text = await openai_utils.transcribe_audio(f)
 
-            if transcribed_text is None:
-                 transcribed_text = ""
+#             if transcribed_text is None:
+#                  transcribed_text = ""
 
-    text = f"🎤: <i>{transcribed_text}</i>"
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+#     text = f"🎤: <i>{transcribed_text}</i>"
+#     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
-    # update n_transcribed_seconds
-    db.set_user_attribute(user_id, "n_transcribed_seconds", voice.duration + db.get_user_attribute(user_id, "n_transcribed_seconds"))
+#     # update n_transcribed_seconds
+#     db.set_user_attribute(user_id, "n_transcribed_seconds", voice.duration + db.get_user_attribute(user_id, "n_transcribed_seconds"))
 
-    await message_handle(update, context, message=transcribed_text)
+#     await message_handle(update, context, message=transcribed_text)
 
 
 async def generate_image_handle(update: Update, context: CallbackContext, message=None):
@@ -515,6 +518,10 @@ async def set_chat_mode_handle(update: Update, context: CallbackContext):
     )
 
 
+"""
+This is a SETTING message handle
+"""
+
 def get_settings_menu(user_id: int):
     current_model = db.get_user_attribute(user_id, "current_model")
     text = config.models["info"][current_model]["description"]
@@ -555,7 +562,6 @@ async def settings_handle(update: Update, context: CallbackContext):
 async def set_settings_handle(update: Update, context: CallbackContext):
     await register_user_if_not_exists(update.callback_query, context, update.callback_query.from_user)
     user_id = update.callback_query.from_user.id
-
     query = update.callback_query
     await query.answer()
 
@@ -682,22 +688,22 @@ def run_bot() -> None:
 
     application.add_handler(CommandHandler("start", start_handle, filters=user_filter))
     application.add_handler(CommandHandler("help", help_handle, filters=user_filter))
-    application.add_handler(CommandHandler("help_group_chat", help_group_chat_handle, filters=user_filter))
+
+    # application.add_handler(CommandHandler("help_group_chat", help_group_chat_handle, filters=user_filter))
+    # application.add_handler(MessageHandler(filters.VOICE & user_filter, voice_message_handle))
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & user_filter, message_handle))
-    application.add_handler(CommandHandler("retry", retry_handle, filters=user_filter))
-    application.add_handler(CommandHandler("new", new_dialog_handle, filters=user_filter))
-    application.add_handler(CommandHandler("cancel", cancel_handle, filters=user_filter))
 
-    application.add_handler(MessageHandler(filters.VOICE & user_filter, voice_message_handle))
 
     application.add_handler(CommandHandler("mode", show_chat_modes_handle, filters=user_filter))
     application.add_handler(CallbackQueryHandler(show_chat_modes_callback_handle, pattern="^show_chat_modes"))
     application.add_handler(CallbackQueryHandler(set_chat_mode_handle, pattern="^set_chat_mode"))
-
-    application.add_handler(CommandHandler("settings", settings_handle, filters=user_filter))
     application.add_handler(CallbackQueryHandler(set_settings_handle, pattern="^set_settings"))
 
+    application.add_handler(CommandHandler("settings", settings_handle, filters=user_filter))
+    application.add_handler(CommandHandler("retry", retry_handle, filters=user_filter))
+    application.add_handler(CommandHandler("new", new_dialog_handle, filters=user_filter))
+    application.add_handler(CommandHandler("cancel", cancel_handle, filters=user_filter))
     application.add_handler(CommandHandler("balance", show_balance_handle, filters=user_filter))
 
     application.add_error_handler(error_handle)
